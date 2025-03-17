@@ -6,10 +6,9 @@ clients = []
 for session in SESSION_STRINGS:
     try:
         client = Client(
-            session_name=session,
+            session_string=session,
             api_id=API_ID,
             api_hash=API_HASH,
-            session_string=session,
             in_memory=True
         )
         clients.append(client)
