@@ -3,9 +3,10 @@ from config import API_ID, API_HASH, SESSION_STRINGS
 
 clients = []
 
-for session in SESSION_STRINGS:
+for i, session in enumerate(SESSION_STRINGS, start=1):
     try:
         client = Client(
+            name=f"client{i}",  # koi bhi unique name de sakte ho
             session_string=session,
             api_id=API_ID,
             api_hash=API_HASH,
