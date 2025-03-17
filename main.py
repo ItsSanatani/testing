@@ -1,8 +1,6 @@
-# main.py
-
 import asyncio
 from pyrogram import Client, filters, errors
-from pyrogram.raw.functions.messages import Report
+from pyrogram.raw.functions.account import ReportPeer
 from pyrogram.raw.types import (
     InputReportReasonSpam,
     InputReportReasonViolence,
@@ -16,8 +14,9 @@ from pyrogram.raw.types import (
 )
 from config import BOT_TOKEN, API_ID, API_HASH
 from client_sessions import clients
+from helpers import extract_username
 
-# Report reasons ki mapping
+# Reporting reasons ka mapping
 REASONS = {
     "1": InputReportReasonSpam,
     "2": InputReportReasonChildAbuse,
@@ -37,36 +36,36 @@ bot = Client("report_bot", bot_token=BOT_TOKEN, api_id=API_ID, api_hash=API_HASH
 @bot.on_message(filters.command("start") & filters.private)
 async def start_handler(client, message):
     await message.reply_text(
-        "**Mass Report Bot mein aapka swagat hai!**\n\n"
-        "**Kripya neeche diye gaye format mein details bheje:**\n"
+        "**Welcome to Mass Report Bot!**\n\n"
+        "**Please send me the following details in this format:**\n"
         "`Group Link`\n"
         "`Message Link (optional)`\n"
         "`Report Reason (number)`\n"
         "`Report Count`\n\n"
         "**Available Reasons:**\n"
-        "1. I don't like it (Spam)\n"
+        "1. Spam\n"
         "2. Child Abuse\n"
         "3. Violence\n"
-        "4. Illegal Goods\n"
-        "5. Illegal Adult Content\n"
-        "6. Personal Data\n"
-        "7. Terrorism\n"
-        "8. Scam or Spam\n"
+        "4. Illegal Drugs\n"
+        "5. Pornography\n"
+        "6. Personal Details\n"
+        "7. Geo Irrelevant\n"
+        "8. Spam\n"
         "9. Copyright\n"
         "10. Other\n"
-        "11. It's not illegal but must be taken down"
+        "11. Other"
     )
 
 @bot.on_message(filters.private & filters.text)
 async def report_handler(client, message):
     try:
-        lines = message.text.strip().split('\n')
+        lines = message.text.split('\n')
         if len(lines) < 4:
             await message.reply_text("Please send all details correctly as instructed!")
             return
 
         group_link = lines[0].strip()
-        message_link = lines[1].strip() if lines[1].strip() else None
+        message_link = lines[1].strip() if len(lines) > 1 else None
         reason_num = lines[2].strip()
         count = int(lines[3].strip())
 
@@ -83,27 +82,31 @@ async def report_handler(client, message):
             for session_client in clients:
                 try:
                     await session_client.start()
-                    peer = await session_client.resolve_peer(group_link)
+                    username = extract_username(group_link)
+
+                    # Resolve Peer
+                    peer = await session_client.resolve_peer(username)
+
                     if message_link:
-                        msg_id = int(message_link.split('/')[-1])
+                        # Message ID extract karo
+                        msg_id = int(message_link.split("/")[-1])
                         await session_client.invoke(
-                            Report(
+                            ReportPeer(
                                 peer=peer,
-                                id=[msg_id],
                                 reason=reason,
                                 message="Reported"
                             )
                         )
                     else:
                         await session_client.invoke(
-                            Report(
+                            ReportPeer(
                                 peer=peer,
-                                id=[],
                                 reason=reason,
                                 message="Reported"
                             )
                         )
                     success += 1
+
                 except errors.FloodWait as e:
                     await asyncio.sleep(e.value)
                     failed += 1
@@ -112,7 +115,7 @@ async def report_handler(client, message):
                     failed += 1
                 finally:
                     await session_client.stop()
-            await asyncio.sleep(1)  # Flood se bachne ke liye
+            await asyncio.sleep(1)  # avoid flood
 
         await message.reply_text(
             f"✅ Mass Reporting Completed!\n\n"
